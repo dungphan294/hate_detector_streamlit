@@ -107,9 +107,7 @@ def fetch_reddit_post(url: str):
     Returns (post_data, comments, error_msg).
     """
     json_url = build_json_url(url)
-    headers = {
-        "User-Agent": "reddit-analysis-tool/1.0"
-    }
+    headers = {"User-Agent": "HateSpeechApp/0.1 by u/hate_detector"}
     
     try:
         r = requests.get(json_url, headers=headers, timeout=15)
