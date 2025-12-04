@@ -1,76 +1,52 @@
 import streamlit as st
-import torch
-from transformers import AutoTokenizer, AutoModelForSequenceClassification, pipeline
+from model_utils import MODEL_NAME, load_model
 
-# =========================
-# LOAD HUGGING FACE MODEL
-# =========================
+# ============================
+# PAGE CONFIG
+# ============================
+st.set_page_config(
+    page_title="Hate Speech App",
+    page_icon="🛡️",
+    layout="wide",
+)
 
-MODEL_NAME = "cardiffnlp/twitter-roberta-base-hate-latest"
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+# ============================
+# SIDEBAR
+# ============================
+nlp, device, setup_time = load_model()
 
-@st.cache_resource
-def load_hate_model():
-    tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
-    model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME).to(device)
+with st.sidebar:
+    st.header("⚙️ Model Info")
+    st.write(f"**Model:** `{MODEL_NAME}`")
+    st.write(f"**Device:** `{device}`")
+    st.write(f"**Setup time:** `{setup_time:.2f} s`")
+    st.markdown("---")
+    st.caption("Navigate using the links below:")
 
-    clf = pipeline(
-        "text-classification",
-        model=model,
-        tokenizer=tokenizer,
-        device=0 if device.type == "cuda" else -1,
-        return_all_scores=True,
-    )
-    return clf
+    st.page_link("pages/single_sentence.py", label="📝 Single Sentence Classifier")
+    st.page_link("pages/reddit_analysis.py", label="📚 Reddit Post Analysis")
 
-hate_pipeline = load_hate_model()
+# ============================
+# MAIN PAGE
+# ============================
+st.title("🛡️ Hate Speech Detection Demo")
 
-
-# =========================
-# CLASSIFICATION FUNCTION
-# =========================
-
-def classify_text(text: str):
+st.markdown(
     """
-    Classify text using the Cardiff hate speech model.
-    Returns: (label, reason)
+<div style="border-radius: 12px; padding: 16px; background-color: #f9fafb; border: 1px solid #e5e7eb;">
+Welcome to the **Hate Speech Detection** demo app.  
+This tool allows you to classify text as safe, abusive, or hateful using a RoBERTa-based model.  
+</div>
+""",
+    unsafe_allow_html=True,
+)
+
+st.markdown("---")
+st.subheader("📖 Instructions")
+st.write(
     """
-    if not text.strip():
-        return "Normal", "Empty input."
-
-    out = hate_pipeline(text, truncation=True, max_length=512)[0]
-
-    # Parse scores
-    score_hate = None
-    score_non_hate = None
-    for item in out:
-        if item["label"].endswith("_1"):
-            score_hate = item["score"]
-        elif item["label"].endswith("_0"):
-            score_non_hate = item["score"]
-
-    if score_hate is None:
-        return "Error", "Unexpected model output."
-
-    # Simple thresholds
-    if score_hate >= 0.80:
-        return "Hateful", f"High hate probability ({score_hate:.2f})"
-    elif score_hate >= 0.40:
-        return "Offensive", f"Medium hate probability ({score_hate:.2f})"
-    else:
-        return "Normal", f"Low hate probability ({score_hate:.2f})"
-
-
-# =========================
-# STREAMLIT UI
-# =========================
-
-st.title("🛡️ Hate Speech Classifier (Single Sentence)")
-
-text = st.text_area("Enter a sentence:", height=100, placeholder="Type something...")
-
-if st.button("Classify"):
-    label, reason = classify_text(text)
-    st.subheader("Result")
-    st.write(f"**Classification:** `{label}`")
-    st.write(f"**Reason:** {reason}")
+- Use the sidebar to access the **Single Sentence Classifier** or the **Batch Classifier**.  
+- Enter text and view the classification result with confidence scores.  
+- Results are color-coded for clarity (green = safe, orange = warning, red = danger, etc.).
+"""
+)
